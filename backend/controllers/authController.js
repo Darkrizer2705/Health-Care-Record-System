@@ -33,10 +33,23 @@ exports.registerUser = async (req, res) => {
 			role
 		});
 
+		// CREATE TOKEN
+		const token = jwt.sign(
+			{
+				id: user._id,
+				role: user.role
+			},
+			process.env.JWT_SECRET,
+			{
+				expiresIn: "7d"
+			}
+		);
+
 		res.status(201).json({
 			success: true,
 			message: "User registered successfully",
-			user
+			user,
+			token
 		});
 
 	} catch (error) {
@@ -93,6 +106,7 @@ exports.loginUser = async (req, res) => {
 		res.status(200).json({
 			success: true,
 			message: "Login successful",
+			user,
 			token
 		});
 

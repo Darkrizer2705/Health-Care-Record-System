@@ -1,22 +1,33 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PageHeader from '../../components/PageHeader.jsx';
 import { Button } from '../../components/Field.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
-import { findPatient, mockPrescriptions, mockLabs, mockVitals } from '../../utils/mockData.js';
+import { mockPrescriptions, mockLabs } from '../../utils/mockData.js';
+import { PatientsAPI } from '../../services/api.js';
 import { Pencil, Pill, FlaskConical } from 'lucide-react';
 
 export default function PatientDetails() {
   const { id } = useParams();
-  const p = findPatient(id);
+  const [p, setP] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    PatientsAPI.get(id).then(res => {
+      setP(res.data.patient);
+    }).catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <div className="text-slate-500">Loading...</div>;
   if (!p) return <div className="text-slate-500">Patient not found.</div>;
 
   const rx = mockPrescriptions.filter((r) => r.patientId === id);
   const labs = mockLabs.filter((l) => l.patientId === id);
-  const vitals = mockVitals.filter((v) => v.patientId === id);
 
   return (
     <div>
-      <PageHeader title={`${p.firstName} ${p.lastName}`} description={`${p.mrn} · ${p.gender} · DOB ${p.dob}`}
+      <PageHeader title={`${p.name}`} description={`ID: ${p._id.slice(-6)} · ${p.gender} · Age ${p.age}`}
         actions={<>
           <Link to={`/doctor/patients/${id}/edit`}><Button variant="outline"><Pencil className="size-4" /> Edit</Button></Link>
           <Link to={`/doctor/prescriptions/new?patientId=${id}`}><Button><Pill className="size-4" /> Prescribe</Button></Link>
@@ -26,19 +37,17 @@ export default function PatientDetails() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <Section title="Demographics">
-            <Row label="Phone" value={p.phone} />
-            <Row label="Address" value={p.address} />
-            <Row label="Allergies" value={p.allergies.join(', ') || 'None'} />
-            <Row label="Conditions" value={p.conditions.join(', ') || 'None'} />
+            <Row label="Diagnosis" value={p.diagnosis || 'None'} />
+            <Row label="Medications" value={p.medications?.join(', ') || 'None'} />
           </Section>
 
           <Section title="Recent vitals">
-            {vitals.length ? (
+            {p.vitals && (p.vitals.bloodPressure || p.vitals.heartRate || p.vitals.temperature) ? (
               <table className="w-full text-sm">
-                <thead className="text-left text-slate-500"><tr><th className="py-1">When</th><th>BP</th><th>HR</th><th>Temp</th><th>SpO2</th></tr></thead>
-                <tbody>{vitals.map((v) => (
-                  <tr key={v._id} className="border-t border-slate-100"><td className="py-2">{new Date(v.recordedAt).toLocaleString()}</td><td>{v.bp}</td><td>{v.hr}</td><td>{v.temp}°F</td><td>{v.spo2}%</td></tr>
-                ))}</tbody>
+                <thead className="text-left text-slate-500"><tr><th>BP</th><th>HR</th><th>Temp</th></tr></thead>
+                <tbody>
+                  <tr className="border-t border-slate-100"><td className="py-2">{p.vitals.bloodPressure || '—'}</td><td>{p.vitals.heartRate || '—'}</td><td>{p.vitals.temperature ? `${p.vitals.temperature}°F` : '—'}</td></tr>
+                </tbody>
               </table>
             ) : <div className="text-sm text-slate-500">No vitals logged.</div>}
           </Section>
